@@ -1,0 +1,2 @@
+images1 : train
+images2 : infer
