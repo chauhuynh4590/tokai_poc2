@@ -9,7 +9,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
-from utilities.check_object import Check_Object
+from utilities.check_object_CLIP import Check_Object
 from utilities.dataset import CVFreshestFrame
 from utilities.popup_windows import ConfidencePopup, center, MessageBox
 from tkinter import Tk, Button, Label, Menu, messagebox, ttk
@@ -111,7 +111,7 @@ class App:
         label_img_text = Label(self.tab_ocr,borderwidth=1, text="Input Images", font=("Consolas", 12))
         label_img_text.grid(row=0, column=0)
 
-        label_img_text2 = Label(self.tab_ocr,borderwidth=1, text=" DataBase", font=("Consolas", 12))
+        label_img_text2 = Label(self.tab_ocr,borderwidth=1, text="DataBase", font=("Consolas", 12))
         label_img_text2.grid(row=0, column=1)
 
         self.ocr_1_img = Label(self.tab_ocr, borderwidth=1, relief="solid", height=20)
@@ -119,6 +119,12 @@ class App:
 
         self.ocr_2_img = Label(self.tab_ocr, borderwidth=1, relief="solid", height=20)
         self.ocr_2_img.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+
+        self.label_img_text_db = Label(self.tab_ocr, borderwidth=1, font=("Consolas", 12))
+        self.label_img_text_db.grid(row=2, column=1)
+
+        self.label_img_text_add = Label(self.tab_ocr, borderwidth=1, font=("Consolas", 12))
+        self.label_img_text_add.grid(row=2, column=0,sticky="ne")
 
 
         self.tab_control.add(self.tab_video, text="Video")
@@ -174,6 +180,7 @@ class App:
         try:
             # destroy current display
             self.check_img.grid_forget()
+            # self.check_img.destroy()
             self.hypl_connect.destroy()
             self.displayImage.destroy()
             self.ocr_1_img.configure(image='')
@@ -189,10 +196,13 @@ class App:
                                    command=self.open_video)
         self.hypl_connect.grid(row=0, column=0, sticky="nsew")
 
+        
+
     # ==================================================================================================================
     # ----------------------------------------- RUN process ------------------------------------------------------------
     # ==================================================================================================================
     def check_object(self):
+        self.img_check=self.image
         img = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img,(400,400))
         photo = ImageTk.PhotoImage(image=Image.fromarray(img))
@@ -200,14 +210,39 @@ class App:
         self.ocr_1_img.image = photo
 
         img2, conf, name2 = self.model_check.find_object(self.image)
+
         img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
         img2 = cv2.resize(img2,(400,400))
         photo2 = ImageTk.PhotoImage(image=Image.fromarray(img2))
         self.ocr_2_img.configure(image=photo2)
         self.ocr_2_img.image = photo2
-        label_img_text_db = Label(self.tab_ocr, borderwidth=1, text=f'img: {name2}, conf: {conf} %', font=("Consolas", 12))
-        label_img_text_db.grid(row=2, column=1)
+
+        self.add_img = Button(self.tab_ocr, text="Add Object",bg ="blue" , fg="red", cursor="hand2", font=("Consolas", 14),
+                                   bd=5, highlightthickness=5, width=10, height=1,
+                                   command=self.add_object)
+        self.add_img.grid(row=2, column=0,sticky="w" )
+
+        self.label_img_text_add.configure(text='')
+        self.label_img_text_db.configure(text='')
+        if conf >80:
+            self.label_img_text_db = Label(self.tab_ocr, borderwidth=1, text=f'img: {name2},\n conf: {conf} %', font=("Consolas", 12))
+            self.label_img_text_db.grid(row=2, column=1)
+        else:
+            self.label_img_text_db = Label(self.tab_ocr, borderwidth=1, text=f'Image does not exist', font=("Consolas", 12))
+            self.label_img_text_db.grid(row=2, column=1)
     
+
+    def add_object(self):
+        name = self.model_check.add_object(self.img_check)
+        self.label_img_text_add = Label(self.tab_ocr, borderwidth=1, text=f'Add Imgae : \n{name}', font=("Consolas", 12))
+        self.label_img_text_add.grid(row=2, column=0,sticky="ne")
+        img2 = cv2.cvtColor(self.img_check, cv2.COLOR_BGR2RGB)
+        img2 = cv2.resize(img2,(400,400))
+        photo2 = ImageTk.PhotoImage(image=Image.fromarray(img2))
+        self.ocr_2_img.configure(image=photo2)
+        self.ocr_2_img.image = photo2
+        messagebox.showinfo("Info", "New object added!")
+
     def open_video(self, event=None):
         self._pause_detection()
         video_file = get_data_askfile("Open Video file")
@@ -280,7 +315,7 @@ class App:
                     messagebox.showinfo("Info", "Video is over!")
                     self.videoCapture.release()
                     self.reset_display()
-                    self.BacodeList = {}
+                    self.check_img.grid_forget()
                     return
 
                 if not (img0 is None or img0.size == 0):

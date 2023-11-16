@@ -17,7 +17,7 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-image_dir = './images1'
+image_dir = 'C:/Users/ht_thien/Desktop/TOkairikaa/github/tokai_poc3/data/images1'
 
 for filename in os.listdir(image_dir):
     if filename.endswith('.png'):
@@ -34,5 +34,5 @@ for filename in os.listdir(image_dir):
 
         img_vector = img_vector.view(img_vector.size(0), -1)
 
-        np.savetxt('./vector/'+filename+'.txt',img_vector.numpy())
+        np.savetxt("C:/Users/ht_thien/Desktop/TOkairikaa/github/tokai_poc3/data/vector/" + filename+ '.txt',img_vector.numpy())
 
