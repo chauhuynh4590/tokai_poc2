@@ -21,40 +21,43 @@ class Check_Object:
         self.data, self.name_img =self.load_data()
 
     def load_data(self):
+        print("Load DataBase")
         path_txt = self.vector_path
         tensor_all = torch.zeros(torch.Size([1, 512]))
-        name_img=["0"]
+        name_img=['0']
         for filename in os.listdir(path_txt):
             if filename.endswith('.pt'):
                 input = os.path.join(path_txt, filename)
                 loaded_pt = torch.load(input)
                 tensor_all = torch.vstack((tensor_all,loaded_pt))
+
                 name_img.append(filename.replace('.pt','.png'))
+                
         return tensor_all, name_img
 
     def img_to_vector(self,img):
-        img = Image.fromarray(img)
-        img = img.resize((500,500))
+        img = img.resize((2000,2000))
         img = self.preprocess(img).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             features = self.model.encode_image(img)
-            features /= features.norm(dim=-1, keepdim=True)
 
+        features /= features.norm(dim=-1, keepdim=True)
         return features
 
     def find_object(self,img):
         img_vector = self.img_to_vector(img)
         
-        similarity = (100.0 * img_vector @ self.data.T).softmax(dim=-1)
+        # similarity = (100.0 * img_vector @ self.data.T).softmax(dim=-1)
+        similarity = (100.0 * img_vector @ self.data.T)
         values, indices = similarity[0].topk(1)
 
         conf, nameimg  = values.item(),self.name_img[indices]
 
         name_path = os.path.join(self.img_path,nameimg)
-        if conf < 0.80 :
+        if conf < 80 :
             name_path = self.error_img
-        conf = float("{:.2f}".format(conf*100))
+        conf = float("{:.2f}".format(conf))
         
         print(conf, nameimg)
         return cv2.imread(name_path) , conf, nameimg
@@ -64,7 +67,8 @@ class Check_Object:
         time_string = time.strftime("y%Y_m%m_d%d_h%H_m%M_s%S", time.localtime(current_time))
 
         path= os.path.join(self.img_path, time_string)+'.png'
-        cv2.imwrite(path,img)
+        # cv2.imwrite(path,img)
+        img.save(path)
         vector= self.img_to_vector(img)
         torch.save(vector,(os.path.join(self.vector_path,time_string)+'.pt'))
         self.data =  torch.vstack((self.data,vector))
@@ -82,3 +86,20 @@ class Check_Object:
 # print(y,z)
 
 # cv2.imshow("im",x)
+
+
+# image_dir = 'C:/Users/ht_thien/Desktop/TOkairikaa/github/tokai_poc3/data/images2'
+# ls=[]
+# # Duyệt qua tất cả các ảnh trong thư mục
+# for filename in os.listdir(image_dir):
+#     if filename.endswith('.png') or filename.endswith('.jpg'):
+#         input = os.path.join(image_dir, filename)
+#         img= Image.open(input)
+#         im, conf , name =a.find_object(img)
+#         same=0
+#         if filename.replace('b','') == name.replace('a',''):
+#             same=1
+#         ls.append([filename,name,conf,same])
+
+# df = pd.DataFrame(ls,columns=['image_name', 'infer', 'conf','same'],index=None)
+# df.to_csv('out_infer_nosoftmax.csv')
