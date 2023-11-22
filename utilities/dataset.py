@@ -22,7 +22,6 @@ class CVFreshestFrame:
     def release(self):
         # print("RELEASE")
         self.running = False
-        # self.t.join(None)
         self.cap.release()
 
     # read frames as soon as they are available, keeping only most recent one
@@ -30,7 +29,7 @@ class CVFreshestFrame:
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
-                # self.q.put(None)
+                self.q.put(None)
                 self.release()
             if not self.q.empty():
                 try:
@@ -40,12 +39,8 @@ class CVFreshestFrame:
             self.q.put(frame)
             time.sleep(1 / self.fps)
 
-    def read(self): # sửa lại vì lỗi khi chạy video trên GPU 
-        img = None
-        try: 
-            img = self.q.get(block=True, timeout=10)            
-        except:
-            self.release()
+    def read(self):
+        img = self.q.get(block=True, timeout=10)
         return self.running, img
 
 

@@ -1,7 +1,10 @@
+import faulthandler
 import os
 import traceback
 import cv2
-import threading
+
+from config import Config
+from utilities.general import SRC
 
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -9,14 +12,15 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
-from utilities.check_object_CLIP import Check_Object
 from utilities.dataset import CVFreshestFrame
-from utilities.popup_windows import ConfidencePopup, center, MessageBox
+from utilities.popup_windows import center, MessageBox, LoadingBox, image_resize_size
 from tkinter import Tk, Button, Label, Menu, messagebox, ttk
 from tkinter.filedialog import askopenfilename
 from tkinter.ttk import Notebook
 
 from PIL import ImageTk, Image
+
+faulthandler.enable()
 
 
 def get_data_askfile(title: str):
@@ -31,9 +35,10 @@ class App:
     def __init__(self, window):
         self.window = window
         self.window.maxsize(1920, 1080)
+        self.window.minsize(720, 405)
         # self.window.resizable(0, 0)
-        self.window.title("Encoding IMG")
-        # self.window.iconbitmap(Config.APP_ICON)
+        self.window.title(Config.APP_TITLE)
+        self.window.iconbitmap(Config.APP_ICON)
         self.window.bind("<Control-o>", self.open_video)
 
         self.window.rowconfigure(0, weight=1)
@@ -50,8 +55,6 @@ class App:
         self.currentWidth = 896
         self.image = None
         # is in error box
-        
-        self.model_check = Check_Object()
 
         self.create_tool_bar()
 
@@ -87,7 +90,7 @@ class App:
         file_menu = Menu(menu_bar, tearoff=0)
         file_menu.add_command(label="Open Video", command=self.open_video)
         file_menu.add_command(label="Version",
-                              command=lambda: MessageBox(self.window, f"TokaiRika Version {0}"))
+                              command=lambda: MessageBox(self.window, f"TokaiRika Version {Config.APP_VERSION}"))
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
@@ -99,52 +102,21 @@ class App:
         self.tab_video.rowconfigure(0, weight=1)
         self.tab_video.columnconfigure(0, weight=1)
 
-        self.hypl_connect = Button(self.tab_video, text="Open Video", fg="blue", cursor="hand2", font=("Consolas", 32),
+        self.hypl_connect = Button(self.tab_video, text="Open Camera", fg="blue", cursor="hand2", font=("Consolas", 32),
                                    bd=0, highlightthickness=0, width=39, height=10,
-                                   command=self.open_video)
+                                   command=self.open_vid_source)
         self.hypl_connect.grid(row=0, column=0, sticky="nsew")
 
-        # ------------------------- Result--
-        self.tab_ocr = ttk.Frame(self.tab_control)
-        self.tab_ocr.grid_columnconfigure((0, 1), weight=1)
-
-        label_img_text = Label(self.tab_ocr,borderwidth=1, text="Input Images", font=("Consolas", 12))
-        label_img_text.grid(row=0, column=0)
-
-        label_img_text2 = Label(self.tab_ocr,borderwidth=1, text="DataBase", font=("Consolas", 12))
-        label_img_text2.grid(row=0, column=1)
-
-        self.ocr_1_img = Label(self.tab_ocr, borderwidth=1, relief="solid", height=20)
-        self.ocr_1_img.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-
-        self.ocr_2_img = Label(self.tab_ocr, borderwidth=1, relief="solid", height=20)
-        self.ocr_2_img.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
-
-        self.label_img_text_db = Label(self.tab_ocr, borderwidth=1, font=("Consolas", 12))
-        self.label_img_text_db.grid(row=2, column=1)
-
-        self.label_img_text_add = Label(self.tab_ocr, borderwidth=1, font=("Consolas", 12))
-        self.label_img_text_add.grid(row=2, column=0,sticky="ne")
-
-
         self.tab_control.add(self.tab_video, text="Video")
-        self.tab_control.add(self.tab_ocr, text="Result")
 
     def _resize_image(self, event):
-        new_width = event.width
-        new_height = event.height
-        cal_height = int(((new_width * 9 / 16 + 32) // 32) * 32)
-        cal_width = int(((new_height * 16 / 9 + 32) // 32) * 32)
-        if 360 <= cal_height <= new_height:
-            self.currentWidth = new_width - 25  # padding
-            self.currentHeight = cal_height - 25  # padding
-        elif 640 <= cal_width <= new_width:
-            self.currentWidth = cal_width - 25  # padding
-            self.currentHeight = new_height - 25  # padding
+        # padding by 25
+        self.currentWidth = event.width - 25
+        self.currentHeight = event.height - 25
 
     def _pause_detection(self):
         self.runUpdate = False  # turn off video detection
-        self.reset_display()
+        # self.reset_display()
 
     def _unpause_detection(self):
         if self.link != "":  # video or rtsp
@@ -153,109 +125,40 @@ class App:
         else:
             self.reset_display()
 
-    def popup_set_conf(self):
-        self._pause_detection()
-        self.w = ConfidencePopup(self.window)
-        try:
-            if self.conf == self.w.conf:
-                # print(f"[{SRC.GUI}] - CONF NO CHANGE")
-                pass
-            else:
-                # print(f"[{SRC.GUI}] - NEW CONF", self.conf)
-                ver = self.w.conf[0]
-                # print(f"[{SRC.GUI}] - Version check: old = {self.conf[0]} and new = {ver}")
-                if self.conf[0] != ver:
-                    # model.reload_yolo_model(ver)
-                    pass
-                self.conf = self.w.conf
-
-            self._unpause_detection()
-
-        except AttributeError:
-            traceback.print_exc()
-            # print(f"[{SRC.GUI}] - Set confidences: CANCEL")
-            return
-
     def reset_display(self):
         try:
             # destroy current display
-            self.check_img.grid_forget()
+            self.btn_check.grid_forget()
             self.hypl_connect.destroy()
             self.displayImage.destroy()
-            self.ocr_1_img.configure(image='')
-            self.ocr_2_img.configure(image='')
-            self.link = ""
-            self.label_img_text_db.configure(text='')
-            self.label_img_text_add.configure(text='')
-            self.add_img.destroy()
-            
+            self.link = ""            
+
         except AttributeError:  # no displayImage
             # traceback.print_exc()
             pass
 
         # add link: Please connect to camera
-        self.hypl_connect = Button(self.tab_video, text="Open Video", fg="blue", cursor="hand2",
+        self.hypl_connect = Button(self.tab_video, text="Open Camera", fg="blue", cursor="hand2",
                                    font=("Consolas", 32), bd=0, highlightthickness=0, width=39, height=10,
-                                   command=self.open_video)
+                                   command=self.open_vid_source)
         self.hypl_connect.grid(row=0, column=0, sticky="nsew")
 
-        
     # ==================================================================================================================
     # ----------------------------------------- RUN process ------------------------------------------------------------
     # ==================================================================================================================
-    def start_check_object(self):
-        threading.Thread(target=self.check_object).start()
-        self.tab_control.select(1)
 
     def check_object(self):
-        self.img_check=self.image
-        img = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img,(400,400))
-        photo = ImageTk.PhotoImage(image=Image.fromarray(img))
-        self.ocr_1_img.configure(image=photo,height=400)
-        self.ocr_1_img.image = photo
-
-        img2, conf, name2 = self.model_check.find_object(img = Image.fromarray(self.image))
-
-        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
-        img2 = cv2.resize(img2,(400,400))
-        photo2 = ImageTk.PhotoImage(image=Image.fromarray(img2))
-        self.ocr_2_img.configure(image=photo2)
-        self.ocr_2_img.image = photo2
-
-        self.add_img = Button(self.tab_ocr, text="Add Object",bg ="blue" , fg="red", cursor="hand2", font=("Consolas", 14),
-                                   bd=5, highlightthickness=5, width=10, height=1,
-                                   command=self.start_add_object)
-        self.add_img.grid(row=2, column=0,padx=20, pady= 20 , sticky="w" )
-
-        self.label_img_text_add.configure(text='')
-        self.label_img_text_db.configure(text='')
-        if conf >80:
-            self.label_img_text_db = Label(self.tab_ocr, borderwidth=1, text=f'img: {name2},\n conf: {conf} %', font=("Consolas", 12))
-            self.label_img_text_db.grid(row=2, column=1)
-        else:
-            self.label_img_text_db = Label(self.tab_ocr, borderwidth=1, text=f'Image does not exist', font=("Consolas", 12))
-            self.label_img_text_db.grid(row=2, column=1)
-    
-    def start_add_object(self):
-        threading.Thread(target=self.add_object).start()
+        try:
+            self.runUpdate = False
+            w = LoadingBox(self.window, self.image)
+            self.runUpdate = True
+            self.update_detection()
+        except:
+            traceback.print_exc()
 
     def add_object(self):
-
-        name = self.model_check.add_object(Image.fromarray(cv2.cvtColor(self.img_check, cv2.COLOR_BGR2RGB)))
-        self.label_img_text_add = Label(self.tab_ocr, borderwidth=1, text=f'Add Imgae : \n{name}', font=("Consolas", 12))
-        self.label_img_text_add.grid(row=2, column=0,padx=20, pady=20,sticky="ne")
-
-        img2 = cv2.cvtColor(self.img_check, cv2.COLOR_BGR2RGB)
-        img2 = cv2.resize(img2,(400,400))
-        photo2 = ImageTk.PhotoImage(image=Image.fromarray(img2))
-        self.ocr_2_img.configure(image=photo2)
-        self.ocr_2_img.image = photo2
-
-        self.label_img_text_db.configure(text='')
-        self.label_img_text_db = Label(self.tab_ocr, borderwidth=1, text=f'New image', font=("Consolas", 12))
-        self.label_img_text_db.grid(row=2, column=1)
-        messagebox.showinfo("Info", "New object added!")
+        pass
+        # name = self.model_check.add_object(Image.fromarray(cv2.cvtColor(self.img_check, cv2.COLOR_BGR2RGB)))
 
     def open_video(self, event=None):
         self._pause_detection()
@@ -271,27 +174,27 @@ class App:
         self.link = str(video_file)
 
         self.open_vid_source(video_file)
-        
 
-    def open_vid_source(self, source):
+    def open_vid_source(self, source=0):
         try:
             if self.videoCapture:
                 self.videoCapture.release()
-                # self.check_img.grid_forget()
-                # cv2.destroyAllWindows()
 
-            self.cnt = 0
-            if not os.path.isfile(source):
-                messagebox.showerror("Error", f"Source '{source}' is not found!")
-                return
-            else:
+            if source == 0 or os.path.isfile(source):
                 capf = cv2.VideoCapture(source)
                 fps = capf.get(cv2.CAP_PROP_FPS)
                 capf.release()
-                self.videoCapture = CVFreshestFrame(source, fps)
-                # print(f"[{SRC.GUI}] - Open video: {source}")
-
-            self.in_running()
+                if fps == 0:  # no camera found
+                    # print(f"[{SRC.GUI}] - ERROR: NO CAMERA FOUND")
+                    messagebox.showinfo("Info", "Camera not found. Open the video instead.")
+                    self.open_video()
+                else:
+                    self.videoCapture = CVFreshestFrame(source, fps)
+                    print(f"[{SRC.GUI}] - Open video: {source}")
+                    self.in_running()
+            else:
+                messagebox.showerror("Error", f"Source '{source}' is not found!")
+                return
         except:
             traceback.print_exc()
             raise Exception("Exception occurred in open_vid_source")
@@ -306,14 +209,15 @@ class App:
             # traceback.print_exc()
             pass
 
-        self.displayImage = Label(self.tab_video)
+        self.displayImage = Label(self.tab_video, borderwidth=1, relief='solid')
         self.displayImage.grid(row=0, column=0, sticky="nsew")
         self.displayImage.bind("<Configure>", self._resize_image)
 
-        self.check_img = Button(self.tab_video, text="Check",bg ="blue" , fg="red", cursor="hand2", font=("Consolas", 14),
-                                   bd=0, highlightthickness=0, width=6, height=2,
-                                   command=self.start_check_object)
-        self.check_img.grid(row=0, column=0, padx=20,pady=20,sticky="se")
+        self.btn_check = Button(self.tab_video, text="Check", cursor="hand2", bg="yellow", #fg="red",
+                                font=("Consolas", 14),
+                                bd=1, highlightthickness=1, width=8, height=2,
+                                command=self.check_object)
+        self.btn_check.grid(row=0, column=0, padx=20, pady=20, sticky="se")
         self.update_detection()
 
     def update_detection(self):
@@ -325,21 +229,23 @@ class App:
                 if not cnt:
                     # print(f"[{SRC.GUI}] - [INFO] - Video is over.")
                     self.runUpdate = False
-                    
                     messagebox.showinfo("Info", "Video is over!")
                     self.videoCapture.release()
                     self.reset_display()
-                    self.check_img.grid_forget()
+                    self.btn_check.grid_forget()
                     return
 
                 if not (img0 is None or img0.size == 0):
-                    if img0.shape[0] != self.currentWidth:
-                        img0 = cv2.resize(img0, (self.currentWidth, self.currentHeight))
                     self.image = img0
+                    if img0.shape[0] != self.currentWidth:
+                        ssize = image_resize_size(img0.shape, (self.currentHeight, self.currentWidth))
+                        if ssize != -1:
+                            img0 = cv2.resize(img0, ssize)
                     imgrz = cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)
                     self.photo = ImageTk.PhotoImage(image=Image.fromarray(imgrz))
 
                     if self.displayImage:
+                        # print(self.displayImage.winfo_width(), self.displayImage.winfo_height())
                         self.displayImage.configure(image=self.photo, background=self.defaultBackground, text="")
 
                 self.window.after(10, self.update_detection)
