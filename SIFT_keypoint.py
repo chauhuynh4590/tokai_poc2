@@ -16,7 +16,7 @@ def sift_keypoint(img1,img2):
 
     good = []
     for m,n in matches:
-        if m.distance < 0.5*n.distance:
+        if m.distance < 0.7*n.distance:
             good.append(m)
 
     result = cv2.drawMatches(img1,keypoints1,img2,keypoints2,good[:100],None,flags=2)
