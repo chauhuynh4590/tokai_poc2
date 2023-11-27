@@ -1,0 +1,1 @@
+pyinstaller --noconfirm --onedir --console --icon "D:/Tokai/tokai_poc2/data/app_icon.ico" --hidden-import "clip" --collect-all "clip" --add-data "D:/Tokai/tokai_poc2/data;data/"  "D:/Tokai/tokai_poc2/GUI.py"
