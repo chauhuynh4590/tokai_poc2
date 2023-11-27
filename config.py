@@ -70,12 +70,16 @@ class AppConfig:
     REID_MODEL: str = ROOT / "model/person-reidentification-retail-0287/person-reidentification-retail-0287.xml"
 
     # CLIP
+    CLIP_MODEL_PATH: str = ROOT / "data/CLIP/ViT-B-16.pt"
     IMG_VECTOR_PATH: str = ROOT / "data/CLIP/vector_images/"
     TXT_VECTOR_PATH: str = ROOT / "data/CLIP/vector_texts/"
     NOT_FOUND_404: str = ROOT / "data/404.png"
     IMG_OBJECT_PATH: str = ROOT / "data/CLIP/images/"
     IMG_THRESHOLD: float = 84.0
     TXT_THRESHOLD: float = 26.5
+
+    # REMBG
+    REMBG_MODEL: str = ROOT / "data/u2net/u2net.onnx"
 
     APP_CNF_FILE: str = ROOT / "config.cfg"
     """

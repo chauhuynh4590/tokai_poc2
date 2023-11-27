@@ -16,7 +16,7 @@ class CheckStatus(Enum):
 class CheckObject:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model, self.preprocess = clip.load('ViT-B/16', self.device)
+        self.model, self.preprocess = clip.load(Config.CLIP_MODEL_PATH, self.device)
         self.img_vectors, self.txt_vectors, self.name_img = self.load_data()
 
     @staticmethod

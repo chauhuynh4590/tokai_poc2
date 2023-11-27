@@ -1,6 +1,7 @@
 import datetime
 import sys
 import threading
+import time
 import traceback
 from tkinter import *
 from tkinter import messagebox
@@ -12,7 +13,7 @@ from PIL import ImageTk, Image
 from config import Config
 from utilities.check_object_CLIP import model_clip, CheckStatus
 from utilities.general import SRC, image_resize_size
-from rembg import remove
+from utilities.rembg_helper import remove_bg
 
 
 def center(win):
@@ -159,10 +160,14 @@ class LoadingBox:
     def check(self, image):
         try:
             # print(f"[{SRC.POPUP_WIN}] - Begin Check")
-            self.current_image = self.removebg_and_crop(image)  # , bgcolor=(0, 0, 0, 0), border=1)
+            st = time.time()
+            self.current_image = self.removebg_and_crop(image)
+            # print("1- {:.5f}".format(time.time() - st))
+            st2 = time.time()
             self.img_from_db, self.status, self.file_from_db = model_clip.find_object(
                 img=Image.fromarray(self.current_image)
             )
+            # print("2- {:.5f}".format(time.time() - st2))
         except:
             print(f"[{SRC.POPUP_WIN}] - Check fail")
             traceback.print_exc()
@@ -170,8 +175,8 @@ class LoadingBox:
         self.run = False
 
     @staticmethod
-    def removebg_and_crop(img_np, bgcolor=(192, 192, 192, 0), border=191):
-        img_np = remove(img_np, bgcolor=bgcolor)
+    def removebg_and_crop(img_np, border=191):
+        img_np = remove_bg(img_np)
         top, left = 0, 0
         bottom, right, _ = img_np.shape
         # print(top, bottom, left, right)
