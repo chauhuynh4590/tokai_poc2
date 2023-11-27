@@ -57,8 +57,8 @@ class App:
 
         self.create_tool_bar()
 
-        style = ttk.Style()
-        style.configure("TNotebook.Tab", font=("Consolas", "14", "bold"), padding=[10, 5])
+        # style = ttk.Style()
+        # style.configure("TNotebook.Tab", font=("Consolas", "14", "bold"), padding=[10, 5])
 
         self.tab_control = Notebook(self.window)
         self.tab_control.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
@@ -185,6 +185,7 @@ class App:
 
     def open_camera(self):
         self.reset_display()
+        self.hypl_connect.config(text="")  # hide the "Open camera" string on button
         self.open_vid_source(source=0)
 
     def open_vid_source(self, source=0):
@@ -200,7 +201,7 @@ class App:
                     self.open_video()
                 else:
                     self.videoCapture = CVFreshestFrame(F.cap, F.fps)
-                    print(f"[{SRC.GUI}] - Open video - source = {source}")
+                    # print(f"[{SRC.GUI}] - Open video - source = {source}")
                     self.in_running()
             else:
                 messagebox.showerror("Error", f"Source '{source}' is not found!")
@@ -220,7 +221,7 @@ class App:
             pass
 
         self.check_box = load_ca(self.videoCapture.W, self.videoCapture.H)
-        print(self.videoCapture.W, self.videoCapture.H, self.check_box)
+        # print(f"{SRC.GUI} - Check area: {self.videoCapture.W}, {self.videoCapture.H}, {self.check_box}")
         self.displayImage = Label(self.tab_video, borderwidth=1, relief='solid')
         self.displayImage.grid(row=0, column=0, sticky="nsew")
         self.displayImage.bind("<Configure>", self._resize_image)

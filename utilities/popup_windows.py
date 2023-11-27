@@ -53,11 +53,12 @@ class MessageBox:
 
 
 class LoadingBox:
-    def __init__(self, master, image, open_cam, source=0, title="Loading..."):
+    def __init__(self, master, image, open_cam, source=0, title="Checking..."):
         self.master = master
-        self.top = Toplevel(master, height=500, width=500)
-        self.top.title(title)
-        self.top.geometry("500x500")
+        self.top = Toplevel(master)
+        self.top.overrideredirect(1)
+        # self.top.title(title)
+        # self.top.geometry("50x50")
         self.top.resizable(False, False)
 
         file = Config.LOADING_GIF
@@ -73,8 +74,13 @@ class LoadingBox:
             obj = PhotoImage(file=file, format=f"gif -index {i}")
             self.photoimage_objects.append(obj)
 
-        self.gif_label = Label(self.top, image="")
-        self.gif_label.pack()
+        # --------------------------------------------------------------------------------------------------------------
+        self.gif_label = Label(self.top, image="", height=2)
+        self.gif_label.grid(row=0, column=0, sticky="nsew")
+
+        Label(self.top, text=title, font=('Consolas', 14), height=2, width=16,
+              anchor='w', bg="#FCFEFC").grid(row=0, column=1)
+        # --------------------------------------------------------------------------------------------------------------
 
         self.run = True
         self.img_from_db = None
@@ -128,7 +134,7 @@ class LoadingBox:
         else:
             self.top.destroy()
 
-            print(f"[{SRC.POPUP_WIN}] - Status = {self.status}; File = {self.file_from_db}, ")
+            # print(f"[{SRC.POPUP_WIN}] - Status = {self.status}; File = {self.file_from_db}, ")
 
             if self.status == CheckStatus.FOUND:
                 dt = self.file_from_db.split("_")
@@ -152,7 +158,7 @@ class LoadingBox:
 
     def check(self, image):
         try:
-            print(f"[{SRC.POPUP_WIN}] - Begin Check")
+            # print(f"[{SRC.POPUP_WIN}] - Begin Check")
             self.current_image = self.removebg_and_crop(image)  # , bgcolor=(0, 0, 0, 0), border=1)
             self.img_from_db, self.status, self.file_from_db = model_clip.find_object(
                 img=Image.fromarray(self.current_image)
@@ -483,7 +489,7 @@ class PopupAddObject:
                 return
             desc_data = desc.replace(" ", "@")
             filename = rf"{self.gen_file_id()}_{name}_{size}_{amount}_{desc_data}"
-            print(f"[{SRC.POPUP_WIN}] - Add: {filename}, shape = {image.shape}")
+            # print(f"[{SRC.POPUP_WIN}] - Add: {filename}, shape = {image.shape}")
             img_name = model_clip.add_object(Image.fromarray(image), desc, filename)
 
         except:
@@ -680,7 +686,8 @@ if __name__ == "__main__":
             self.w = PopupAddObject(self.master, image)
 
         def popup_test(self):
-            self.w = LoadingBox(self.master, None)
+            image = cv2.imread('../data/404.png')
+            self.w = LoadingBox(self.master, image, open_cam=True)
             # from tkinter.filedialog import askopenfilename
             # from cv2 import cv2
 

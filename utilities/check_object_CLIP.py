@@ -66,7 +66,7 @@ class CheckObject:
         img_values, target_indices = img_similarity[0].topk(1)
 
         if target_indices == 0:  # no object in db
-            print(f"{SRC.CLIP} - Object not found")
+            # print(f"[{SRC.CLIP}] - Object not found")
             return None, CheckStatus.NOT_FOUND, ''
 
         txt_similarity = (100.0 * img_vector @ self.txt_vectors[target_indices - 1].T)
@@ -74,7 +74,7 @@ class CheckObject:
 
         img_conf, txt_conf, img_name = img_values.item(), txt_values.item(), self.name_img[target_indices - 1]
 
-        print(img_conf, txt_conf)
+        # print(f"[{SRC.CLIP}] - Img conf: {img_conf}, TXT conf: {txt_conf}")
 
         status = CheckStatus.CONFUSE
         name_path = os.path.join(Config.IMG_OBJECT_PATH, img_name)
